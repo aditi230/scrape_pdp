@@ -1,6 +1,35 @@
 from scrape.scraper_base import ScraperBase
 import json
 
+class ScraperValidator:
+    @staticmethod
+    def validate_product_info(product_info):
+        errors = []
+
+        # Sale price should be less than or equal to original price
+        if product_info.get("sale_prices") and product_info.get("price") and product_info["sale_prices"][0] > product_info["price"]:
+            errors.append("Sale price is greater than the original price.")
+
+        # Mandatory fields: title, product_id
+        mandatory_fields = ["title", "product_id"]
+        for field in mandatory_fields:
+            if not product_info.get(field):
+                errors.append(f"{field} is a mandatory field and is missing.")
+
+        # Validate each model
+        for model in product_info.get("models", []):
+            if not model.get("variants"):
+                errors.append(f"Model '{model.get('color', 'N/A')}' is missing variant information.")
+            else:
+                for variant in model["variants"]:
+                    # Each variant should have an image and a price
+                    if not variant.get("image"):
+                        errors.append(f"Variant '{variant.get('size', 'N/A')}' in model '{model.get('color', 'N/A')}' is missing images.")
+                    if not variant.get("price"):
+                        errors.append(f"Variant '{variant.get('size', 'N/A')}' in model '{model.get('color', 'N/A')}' is missing price.")
+
+        return errors
+
 class ForeignFortuneScraper(ScraperBase):
     BASE_URL = "https://foreignfortune.com"
 
@@ -18,10 +47,18 @@ class ForeignFortuneScraper(ScraperBase):
 
             for product_link in products_links:
                 product_data = self.extract_product_data(product_link)
-                all_product_data[product_link] = product_data
+                validation_errors = ScraperValidator.validate_product_info(product_data)
 
-        with open('output/foreign_fortune_data.json', 'w') as json_file:
-            json.dump(all_product_data, json_file, indent=2)
+                if not validation_errors:
+                    all_product_data[product_link] = product_data
+                else:
+                    print(f"Validation errors for product {product_link}:")
+                    for error in validation_errors:
+                        print(f"- {error}")
+
+        if all_product_data:
+            with open('output/foreign_fortune_data.json', 'w') as json_file:
+                json.dump(all_product_data, json_file, indent=2)
 
     def visit_and_parse(self, link):
         product_links = []
@@ -116,7 +153,7 @@ class ForeignFortuneScraper(ScraperBase):
 
             variant_info = {
                 "id": variant_id,
-                "image": variant['featured_image'],
+                "image": image_links[0],
                 "price": variant_price,
                 "size": size
             }
