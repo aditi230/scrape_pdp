@@ -4,7 +4,7 @@
 
 This project involves web scraping tasks using Python 3.9. Follow the steps below to set up and run the scraping scripts:
 
-Make sure you have Python 3.9 installed on your system.
+Make sure you have Python 3.9 installed on your system and repositry is cloned.
 Run the following commands in your terminal:
 
 ```
